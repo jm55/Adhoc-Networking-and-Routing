@@ -1,21 +1,7 @@
-/* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
-/*
- * Copyright (c) 2009 University of Washington
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
- */
+//NSCOM02 MCO2
+//MEMBER: ESCALONA, JOSE MIGUEL
+
+//THIS WAS BASED FROM NS3's examples/wireless/wifi-simple-adhoc-grid.cc
 
 //
 // This program configures a grid (default 5x5) of nodes on an
@@ -39,35 +25,6 @@
 // can be listed with the following command:
 // ./ns3 run "wifi-simple-adhoc-grid --help"
 //
-// Note that all ns-3 attributes (not just the ones exposed in the below
-// script) can be changed at command line; see the ns-3 documentation.
-//
-// For instance, for this configuration, the physical layer will
-// stop successfully receiving packets when distance increases beyond
-// the default of 500m.
-// To see this effect, try running:
-//
-// ./ns3 run "wifi-simple-adhoc-grid --distance=500"
-// ./ns3 run "wifi-simple-adhoc-grid --distance=1000"
-// ./ns3 run "wifi-simple-adhoc-grid --distance=1500"
-//
-// The source node and sink node can be changed like this:
-//
-// ./ns3 run "wifi-simple-adhoc-grid --sourceNode=20 --sinkNode=10"
-//
-// This script can also be helpful to put the Wifi layer into verbose
-// logging mode; this command will turn on all wifi logging:
-//
-// ./ns3 run "wifi-simple-adhoc-grid --verbose=1"
-//
-// By default, trace file writing is off-- to enable it, try:
-// ./ns3 run "wifi-simple-adhoc-grid --tracing=1"
-//
-// When you are done tracing, you will notice many pcap trace files
-// in your directory.  If you have tcpdump installed, you can try this:
-//
-// tcpdump -r wifi-simple-adhoc-grid-0-0.pcap -nn -tt
-//
 
 #include "ns3/command-line.h"
 #include "ns3/config.h"
@@ -84,6 +41,7 @@
 #include "ns3/ipv4-static-routing-helper.h"
 #include "ns3/ipv4-list-routing-helper.h"
 #include "ns3/internet-stack-helper.h"
+#include "ns3/random-variable-stream.h"
 
 using namespace ns3;
 
@@ -110,6 +68,27 @@ static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize,
     {
       socket->Close ();
     }
+}
+
+double RandomValue(double max){
+  Ptr<UniformRandomVariable> x = CreateObject<UniformRandomVariable> ();
+  x->SetAttribute("Min", DoubleValue(0.0));
+  x->SetAttribute("Max", DoubleValue(max));
+
+  return x->GetValue();
+}
+
+//BASED FROM https://groups.google.com/g/ns-3-users/c/n1-N6zVlOLc/m/mvNV9lEwJy8J
+Ptr<PositionAllocator> getPositionAlloc(uint32_t gridSize){
+  ObjectFactory pos;
+  Ptr<UniformRandomVariable> x = CreateObject<UniformRandomVariable> ();
+  x->SetAttribute("Min", DoubleValue(0.0));
+  x->SetAttribute("Max", DoubleValue(gridSize));
+
+  pos.SetTypeId ("ns3::RandomRectanglePositionAllocator");
+  pos.Set ("X", x->GetValue ());
+  pos.Set ("Y", x->GetValue());
+  return pos.Create ()->GetObject<PositionAllocator> ();
 }
 
 
@@ -214,14 +193,15 @@ int main (int argc, char *argv[])
   
   //MOBILITY FOR MOVING NODES
   MobilityHelper random_mobility;
-  random_mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
-                                 "MinX", DoubleValue (0.0),
-                                 "MinY", DoubleValue (0.0),
-                                 "DeltaX", DoubleValue (distance),
-                                 "DeltaY", DoubleValue (distance),
-                                 "GridWidth", UintegerValue (6), //MODIFIED GRIDWIDTH AS THEIR WILL BE 30 DEVICES INSTEAD OF THE ORIGINAL 25
-                                 "LayoutType", StringValue ("RowFirst"));
-  random_mobility.SetMobilityModel ("ns3::RandomWaypointMobilityModel"); 
+  Ptr<PositionAllocator> positionAlloc = getPositionAlloc(30);
+  random_mobility.SetMobilityModel (
+    "ns3::RandomWaypointMobilityModel",
+    "Speed", 
+    RandomValue(300.0), 
+    "Pause", 
+    RandomValue(0)
+  ); 
+  random_mobility.SetPositionAllocator(positionAlloc);
   random_mobility.Install (mobileNodes);
   NS_LOG_UNCOND ("Mobile Mobility Type: " << random_mobility.GetMobilityModelType());
 
