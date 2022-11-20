@@ -128,17 +128,17 @@ int main (int argc, char *argv[])
   double interval = 1.0; // In seconds
   double sim_time = 300; //SIMULATION TIME
   bool verbose = false;
-  bool tracing = false;
+  bool tracing = true;
 
   //SOME OF THE FLAGS WERE TEMPORARILY OMMITED TO REDUCE ISSUES WHEN DEBUGGING
   CommandLine cmd (__FILE__);
   //cmd.AddValue ("phyMode", "Wifi Phy mode", phyMode);
-  cmd.AddValue ("distance", "distance (m)", distance);
-  cmd.AddValue ("packetSize", "size of application packet sent", packetSize);
-  cmd.AddValue ("numPackets", "number of packets generated", numPackets);
-  cmd.AddValue ("interval", "interval (seconds) between packets", interval);
-  cmd.AddValue ("verbose", "turn on all WifiNetDevice log components", verbose);
-  cmd.AddValue ("tracing", "turn on ascii and pcap tracing", tracing);
+  cmd.AddValue ("distance", "Distance (m)", distance);
+  cmd.AddValue ("packetSize", "Size of application packet sent", packetSize);
+  cmd.AddValue ("numPackets", "Number of packets generated", numPackets);
+  cmd.AddValue ("interval", "Interval (seconds) between packets", interval);
+  cmd.AddValue ("verbose", "Turn on all WifiNetDevice log components", verbose);
+  cmd.AddValue ("tracing", "Turn on ASCII and PCAP tracing", tracing);
   cmd.AddValue ("numStaticNodes", "Number of Static Nodes", numStaticNodes);
   cmd.AddValue ("numMobileNodes", "Number of Mobile Nodes", numMobileNodes);
   cmd.AddValue ("sinkNodeStatic", "Static Receiver node number", sinkNodeStatic);
@@ -165,10 +165,12 @@ int main (int argc, char *argv[])
 
   // The below set of helpers will help us to put together the wifi NICs we want
   WifiHelper wifi;
+  
+  //VERBOSE
   if (verbose)
-    {
-      wifi.EnableLogComponents ();  // Turn on all Wifi logging
-    }
+  {
+    wifi.EnableLogComponents ();  // Turn on all Wifi logging
+  }
 
   YansWifiPhyHelper wifiPhy;
   // set it to zero; otherwise, gain will be added
@@ -195,7 +197,7 @@ int main (int argc, char *argv[])
   NetDeviceContainer devices = static_Devices;
   devices.Add(mobile_Devices);
 
-  NS_LOG_UNCOND ("Devices: " << devices.GetN());
+  NS_LOG_UNCOND ("Aggregated Devices: " << devices.GetN());
 
   //MOBILITY FOR STATIC NODES
   MobilityHelper static_mobility;
@@ -243,23 +245,39 @@ int main (int argc, char *argv[])
   ipv4.SetBase ("10.1.1.0", "255.255.255.0");
   Ipv4InterfaceContainer i = ipv4.Assign (devices);
 
-  NS_LOG_UNCOND ("Setting Static Nodes recv/src...");
+  //TRACING
+  if (tracing == true)
+  {
+    NS_LOG_UNCOND ("Tracing: " << tracing);
+    AsciiTraceHelper ascii;
+    NS_LOG_UNCOND ("Tracing: Enabling ASCIIAll...");
+    wifiPhy.EnableAsciiAll (ascii.CreateFileStream ("wifi-simple-adhoc-grid.tr"));
+    NS_LOG_UNCOND ("Tracing: Enabling PCAP...");
+    wifiPhy.EnablePcap ("wifi-simple-adhoc-grid", devices);
+    NS_LOG_UNCOND ("Tracing: Enabled ASCIIAll and PCAP!");
+    // Trace routing tables
+    Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper> ("wifi-simple-adhoc-grid.routes", std::ios::out);
+    olsr.PrintRoutingTableAllEvery (Seconds (2), routingStream);
+    Ptr<OutputStreamWrapper> neighborStream = Create<OutputStreamWrapper> ("wifi-simple-adhoc-grid.neighbors", std::ios::out);
+    olsr.PrintNeighborCacheAllEvery (Seconds (2), neighborStream);
+
+    // To do-- enable an IP-level trace that shows forwarding events only
+  }
 
   //FOR STATIC NODES
+  NS_LOG_UNCOND ("Setting Static Nodes recv/src...");
   TypeId tidStatic = TypeId::LookupByName ("ns3::TcpSocketFactory");
   Ptr<Socket> recvSinkStatic = Socket::CreateSocket (staticNodes.Get (sinkNodeStatic), tidStatic);
   InetSocketAddress localStatic = InetSocketAddress (Ipv4Address::GetAny (), 80);
   recvSinkStatic ->Bind (localStatic);
   recvSinkStatic ->SetRecvCallback (MakeCallback (&ReceivePacket));
-  NS_LOG_UNCOND ("recvSinkStatic->SetRecvCallback!");
   Ptr<Socket> sourceStatic = Socket::CreateSocket (staticNodes.Get(sourceNodeStatic), tidStatic); //CRASHES HERE
   InetSocketAddress remoteStatic = InetSocketAddress (i.GetAddress (sinkNodeStatic, 0), 80);
   sourceStatic->Connect (remoteStatic);
-
   NS_LOG_UNCOND ("Setting Static Nodes recv/src Complete!");  
 
-  /**
   //FOR MOBILE NODES
+  NS_LOG_UNCOND ("Setting Mobile Nodes recv/src...");
   TypeId tidMobile = TypeId::LookupByName ("ns3::UdpSocketFactory");
   Ptr<Socket> recvSinkMobile = Socket::CreateSocket (mobileNodes.Get (sinkNodeMobile), tidMobile);
   InetSocketAddress localMobile = InetSocketAddress (Ipv4Address::GetAny (), 80);
@@ -268,26 +286,15 @@ int main (int argc, char *argv[])
   Ptr<Socket> sourceMobile = Socket::CreateSocket (mobileNodes.Get (sourceNodeMobile), tidMobile);
   InetSocketAddress remoteMobile = InetSocketAddress (i.GetAddress (sinkNodeMobile, 0), 80);
   sourceMobile->Connect (remoteMobile);
-  */
-  if (tracing == true)
-    {
-      AsciiTraceHelper ascii;
-      wifiPhy.EnableAsciiAll (ascii.CreateFileStream ("wifi-simple-adhoc-grid.tr"));
-      wifiPhy.EnablePcap ("wifi-simple-adhoc-grid", devices);
-      // Trace routing tables
-      Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper> ("wifi-simple-adhoc-grid.routes", std::ios::out);
-      olsr.PrintRoutingTableAllEvery (Seconds (2), routingStream);
-      Ptr<OutputStreamWrapper> neighborStream = Create<OutputStreamWrapper> ("wifi-simple-adhoc-grid.neighbors", std::ios::out);
-      olsr.PrintNeighborCacheAllEvery (Seconds (2), neighborStream);
-
-      // To do-- enable an IP-level trace that shows forwarding events only
-    }
+  NS_LOG_UNCOND ("Setting Mobile Nodes recv/src Complete!");
 
   // Give OLSR time to converge-- 30 seconds perhaps
+  NS_LOG_UNCOND ("Setting Simulator OLSR Convergence for Static Nodes...");
   Simulator::Schedule (Seconds (15.0), &GenerateTraffic,
                        sourceStatic, packetSize, numPackets, interPacketInterval);
-  //Simulator::Schedule (Seconds (30.0), &GenerateTraffic,
-  //                     sourceMobile, packetSize, numPackets, interPacketInterval);
+  NS_LOG_UNCOND ("Setting Simulator OLSR Convergence for Mobile Nodes...");
+  Simulator::Schedule (Seconds (30.0), &GenerateTraffic,
+                       sourceMobile, packetSize, numPackets, interPacketInterval);
 
   // Output what we are doing
   NS_LOG_UNCOND ("Testing from node " << sourceNodeStatic << " to " << sinkNodeStatic << " with grid distance " << distance);
