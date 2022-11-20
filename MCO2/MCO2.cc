@@ -70,28 +70,6 @@ static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize,
     }
 }
 
-double RandomValue(double max){
-  Ptr<UniformRandomVariable> x = CreateObject<UniformRandomVariable> ();
-  x->SetAttribute("Min", DoubleValue(0.0));
-  x->SetAttribute("Max", DoubleValue(max));
-
-  return x->GetValue();
-}
-
-//BASED FROM https://groups.google.com/g/ns-3-users/c/n1-N6zVlOLc/m/mvNV9lEwJy8J
-Ptr<PositionAllocator> getPositionAlloc(uint32_t gridSize){
-  ObjectFactory pos;
-  Ptr<UniformRandomVariable> x = CreateObject<UniformRandomVariable> ();
-  x->SetAttribute("Min", DoubleValue(0.0));
-  x->SetAttribute("Max", DoubleValue(gridSize));
-
-  pos.SetTypeId ("ns3::RandomRectanglePositionAllocator");
-  pos.Set ("X", x->GetValue ());
-  pos.Set ("Y", x->GetValue());
-  return pos.Create ()->GetObject<PositionAllocator> ();
-}
-
-
 int main (int argc, char *argv[])
 {
   std::string phyMode ("DsssRate1Mbps");
@@ -185,7 +163,7 @@ int main (int argc, char *argv[])
                                  "MinY", DoubleValue (0.0),
                                  "DeltaX", DoubleValue (distance),
                                  "DeltaY", DoubleValue (distance),
-                                 "GridWidth", UintegerValue (6), //MODIFIED GRIDWIDTH AS THEIR WILL BE 30 DEVICES INSTEAD OF THE ORIGINAL 25
+                                 "GridWidth", UintegerValue (30), //MODIFIED GRIDWIDTH AS THEIR WILL BE 30 DEVICES INSTEAD OF THE ORIGINAL 25
                                  "LayoutType", StringValue ("RowFirst"));
   static_mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
   static_mobility.Install (staticNodes);
@@ -194,14 +172,22 @@ int main (int argc, char *argv[])
   //MOBILITY FOR MOVING NODES
   MobilityHelper random_mobility;
   Ptr<PositionAllocator> positionAlloc = getPositionAlloc(30);
+  random_mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
+                                 "MinX", DoubleValue (0.0),
+                                 "MinY", DoubleValue (0.0),
+                                 "DeltaX", DoubleValue (distance),
+                                 "DeltaY", DoubleValue (distance),
+                                 "GridWidth", UintegerValue (30), //MODIFIED GRIDWIDTH AS THEIR WILL BE 30 DEVICES INSTEAD OF THE ORIGINAL 25
+                                 "LayoutType", StringValue ("RowFirst"));
+  
   random_mobility.SetMobilityModel (
     "ns3::RandomWaypointMobilityModel",
     "Speed", 
-    RandomValue(300.0), 
+    getRandomValue(300.0), 
     "Pause", 
-    RandomValue(0)
-  ); 
-  random_mobility.SetPositionAllocator(positionAlloc);
+    getRandomValue(0),
+    "PositionAllocator",
+  );
   random_mobility.Install (mobileNodes);
   NS_LOG_UNCOND ("Mobile Mobility Type: " << random_mobility.GetMobilityModelType());
 
