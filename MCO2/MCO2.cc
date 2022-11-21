@@ -1,30 +1,9 @@
 //NSCOM02 MCO2
 //MEMBER: ESCALONA, JOSE MIGUEL
 
-//THIS WAS BASED FROM NS3's examples/wireless/wifi-simple-adhoc-grid.cc
-
-//
-// This program configures a grid (default 5x5) of nodes on an
-// 802.11b physical layer, with
-// 802.11b NICs in adhoc mode, and by default, sends one packet of 1000
-// (application) bytes to node 1.
-//
-// The default layout is like this, on a 2-D grid.
-//
-// n20  n21  n22  n23  n24
-// n15  n16  n17  n18  n19
-// n10  n11  n12  n13  n14
-// n5   n6   n7   n8   n9
-// n0   n1   n2   n3   n4
-//
-// the layout is affected by the parameters given to GridPositionAllocator;
-// by default, GridWidth is 5 and numNodes is 25..
-//
-// There are a number of command-line options available to control
-// the default behavior.  The list of available command-line options
-// can be listed with the following command:
-// ./ns3 run "wifi-simple-adhoc-grid --help"
-//
+//THIS WAS BASED FROM NS3's:
+//  1. examples/wireless/wifi-simple-adhoc-grid.cc
+//  2. examples/routing/manet-routing-compare.cc
 
 #include "ns3/command-line.h"
 #include "ns3/config.h"
@@ -42,32 +21,37 @@
 #include "ns3/ipv4-list-routing-helper.h"
 #include "ns3/internet-stack-helper.h"
 #include "ns3/random-variable-stream.h"
+#include "ns3/core-module.h"
+#include "ns3/network-module.h"
+#include "ns3/internet-module.h"
+#include "ns3/mobility-module.h"
+#include "ns3/aodv-module.h"
+#include "ns3/olsr-module.h"
+#include "ns3/dsdv-module.h"
+#include "ns3/dsr-module.h"
+#include "ns3/applications-module.h"
+#include "ns3/yans-wifi-helper.h"
 
 using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE ("WifiSimpleAdhocGrid");
 
-void ReceivePacket (Ptr<Socket> socket)
-{
-  while (socket->Recv ())
-    {
-      NS_LOG_UNCOND (": Received one packet!");
-    }
+void ReceivePacket (Ptr<Socket> socket){
+  while (socket->Recv ()){
+    NS_LOG_UNCOND (socket->GetNode()->GetId() << " Received one packet!");
+  }
 }
 
-static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize,
-                             uint32_t pktCount, Time pktInterval )
-{
-  if (pktCount > 0)
-    {
-      socket->Send (Create<Packet> (pktSize));
-      Simulator::Schedule (pktInterval, &GenerateTraffic,
-                           socket, pktSize,pktCount - 1, pktInterval);
-    }
-  else
-    {
-      socket->Close ();
-    }
+static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize, uint32_t pktCount, Time pktInterval ){
+  NS_LOG_UNCOND ("Generating traffic...");
+  if (pktCount > 0){
+    NS_LOG_UNCOND ("Socket: " << socket->GetNode()->GetId() << " sending " << pktSize << " bytes of packet");
+    socket->Send (Create<Packet> (pktSize));
+    Simulator::Schedule (pktInterval, &GenerateTraffic, socket, pktSize,pktCount - 1, pktInterval);
+  }
+  else{
+    socket->Close ();
+  }
 }
 
 int main (int argc, char *argv[])
@@ -82,10 +66,42 @@ int main (int argc, char *argv[])
   uint32_t sourceNodeStatic = 14; //BASE 0 THUS RANGE IS 0 TO 14
   uint32_t sinkNodeMobile = 0;
   uint32_t sourceNodeMobile = 14; //BASE 0 THUS RANGE IS 0 TO 14
-  double interval = 1.0; // In seconds
+  double interval = 1.0; //IN SECONDS
   double sim_time = 300; //SIMULATION TIME
+  double movementSpeed = 300;
+  double pauseSpeed = 0;
   bool verbose = false;
   bool tracing = true;
+
+
+  NS_LOG_UNCOND ("==============================================");
+  NS_LOG_UNCOND ("NSCOM02 S11");
+  NS_LOG_UNCOND ("MCO2 PROJECT");
+  NS_LOG_UNCOND ("Member: ESCALONA, J.M.");
+  NS_LOG_UNCOND ("The code was based from: ");
+  NS_LOG_UNCOND ("1. examples/wireless/wifi-simple-adhoc-grid.cc");
+  NS_LOG_UNCOND ("2. examples/routing/manet-routing-compare.cc");
+  NS_LOG_UNCOND ("==============================================");
+  NS_LOG_UNCOND ("");
+
+  NS_LOG_UNCOND ("=============================================="); 
+  NS_LOG_UNCOND ("SPECIFICATION:");
+  NS_LOG_UNCOND ("");
+  NS_LOG_UNCOND ("Data Flow: Messages");
+  NS_LOG_UNCOND ("Traffic Pattern: TCP");
+  NS_LOG_UNCOND ("Simulation Time: " << sim_time << "s");
+  NS_LOG_UNCOND ("Transmission Range: " << distance << "m");
+  NS_LOG_UNCOND ("Protocol Stack: TCP/IP");
+  NS_LOG_UNCOND ("Medium: 802.11");
+  NS_LOG_UNCOND ("Packet Size: "  << packetSize << " bytes");
+  NS_LOG_UNCOND ("Mobility Model: Static & RandomWay Point");
+  NS_LOG_UNCOND ("No of Nodes: " << numStaticNodes << " static & " << numMobileNodes << " mobile");
+  NS_LOG_UNCOND ("==============================================");
+  NS_LOG_UNCOND ("");
+
+  NS_LOG_UNCOND ("==============================================");
+  NS_LOG_UNCOND ("BUILDING CONFIGURATIONS...");
+  NS_LOG_UNCOND ("==============================================");
 
   //SOME OF THE FLAGS WERE TEMPORARILY OMMITED TO REDUCE ISSUES WHEN DEBUGGING
   CommandLine cmd (__FILE__);
@@ -103,10 +119,11 @@ int main (int argc, char *argv[])
   cmd.AddValue ("sinkNodeMobile", "Mobile Receiver node number", sinkNodeMobile);
   cmd.AddValue ("sourceNodeMobile", "Mobile Sender node number", sourceNodeMobile);
   cmd.Parse (argc, argv);
-  // Convert to time object
+
+  // CONVERT TO TIME OBJECT
   Time interPacketInterval = Seconds (interval);
 
-  // Fix non-unicast data rate to be the same as that of unicast
+  // FIX NON-UNICAST DATA RATE TO BE THE SAME AS THAT OF UNICAST
   Config::SetDefault ("ns3::WifiRemoteStationManager::NonUnicastMode",
                       StringValue (phyMode));
 
@@ -120,19 +137,19 @@ int main (int argc, char *argv[])
   NS_LOG_UNCOND ("Static Node Count: " << staticNodes.GetN());
   NS_LOG_UNCOND ("Mobile Node Count: " << mobileNodes.GetN());
 
-  // The below set of helpers will help us to put together the wifi NICs we want
+  // THE BELOW SET OF HELPERS WILL HELP US TO PUT TOGETHER THE WIFI NICS WE WANT
   WifiHelper wifi;
   
   //VERBOSE
   if (verbose)
   {
-    wifi.EnableLogComponents ();  // Turn on all Wifi logging
+    wifi.EnableLogComponents ();  // TURN ON ALL WIFI LOGGING
   }
 
   YansWifiPhyHelper wifiPhy;
-  // set it to zero; otherwise, gain will be added
+  // SET IT TO ZERO; OTHERWISE, GAIN WILL BE ADDED
   wifiPhy.Set ("RxGain", DoubleValue (-10) );
-  // ns-3 supports RadioTap and Prism tracing extensions for 802.11b
+  // NS-3 SUPPORTS RADIOTAP AND PRISM TRACING EXTENSIONS FOR 802.11B
   wifiPhy.SetPcapDataLinkType (WifiPhyHelper::DLT_IEEE802_11_RADIO);
 
   YansWifiChannelHelper wifiChannel;
@@ -140,13 +157,13 @@ int main (int argc, char *argv[])
   wifiChannel.AddPropagationLoss ("ns3::FriisPropagationLossModel");
   wifiPhy.SetChannel (wifiChannel.Create ());
 
-  // Add an upper mac and disable rate control
+  // ADD AN UPPER MAC AND DISABLE RATE CONTROL
   WifiMacHelper wifiMac;
   wifi.SetStandard (WIFI_STANDARD_80211b);
   wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
                                 "DataMode",StringValue (phyMode),
                                 "ControlMode",StringValue (phyMode));
-  // Set it to adhoc mode
+  // SET IT TO ADHOC MODE
   //MODIFIED TO AGGREGATE STATIC AND MOBILE NETDEVICECONTAINERS INTO ONE 'devices' NETDEVICECONTAINER
   wifiMac.SetType ("ns3::AdhocWifiMac");
   NetDeviceContainer static_Devices = wifi.Install (wifiPhy, wifiMac, staticNodes);
@@ -157,6 +174,7 @@ int main (int argc, char *argv[])
   NS_LOG_UNCOND ("Aggregated Devices: " << devices.GetN());
 
   //MOBILITY FOR STATIC NODES
+  NS_LOG_UNCOND ("Setting Static Mobility...");
   MobilityHelper static_mobility;
   static_mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
                                  "MinX", DoubleValue (0.0),
@@ -167,11 +185,12 @@ int main (int argc, char *argv[])
                                  "LayoutType", StringValue ("RowFirst"));
   static_mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
   static_mobility.Install (staticNodes);
+  NS_LOG_UNCOND ("Static Mobility Set!");
   NS_LOG_UNCOND ("Static Mobility Type: " << static_mobility.GetMobilityModelType());
   
-  //MOBILITY FOR MOVING NODES
+  //MOBILITY FOR MOVING NODES (INITIAL)
+  NS_LOG_UNCOND ("Setting Mobile Mobility (Initial)...");
   MobilityHelper random_mobility;
-  Ptr<PositionAllocator> positionAlloc = getPositionAlloc(30);
   random_mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
                                  "MinX", DoubleValue (0.0),
                                  "MinY", DoubleValue (0.0),
@@ -179,19 +198,51 @@ int main (int argc, char *argv[])
                                  "DeltaY", DoubleValue (distance),
                                  "GridWidth", UintegerValue (30), //MODIFIED GRIDWIDTH AS THEIR WILL BE 30 DEVICES INSTEAD OF THE ORIGINAL 25
                                  "LayoutType", StringValue ("RowFirst"));
+  NS_LOG_UNCOND ("Mobile Mobility (Initial) Set!");
+
+  //POSITIONALLOCATOR FOR MOBILE FINAL DESTINATION
+  NS_LOG_UNCOND ("Building PositionAllocator...");
+  
+  int64_t streamIndex = 0;
+  ObjectFactory pos;
+  pos.SetTypeId ("ns3::RandomRectanglePositionAllocator");
+  
+  std::stringstream setX;
+  std::stringstream setY;
+  setX << "ns3::UniformRandomVariable[Min=0.0|Max=" << movementSpeed << "]";
+  setY << "ns3::UniformRandomVariable[Min=0.0|Max=" << movementSpeed << "]";
+  pos.Set ("X", StringValue (setX.str()));
+  pos.Set ("Y", StringValue (setY.str()));
+
+  Ptr<PositionAllocator> mobilePosAlloc = pos.Create ()->GetObject<PositionAllocator> ();
+  streamIndex += mobilePosAlloc->AssignStreams (streamIndex);
+  
+  NS_LOG_UNCOND ("PositionAllocator Built!");
+
+  //MOBILITY FOR MOVING NODES (FINAL DESTINATION)
+  NS_LOG_UNCOND ("Setting Mobile Mobility (Final Destination)...");
+  
+  std::stringstream speed; //MOVEMENT SPEED
+  std::stringstream pause; //PAUSE MOVEMENT SPEED
+  speed << "ns3::UniformRandomVariable[Min=0.0|Max=" << movementSpeed << "]";
+  pause << "ns3::ConstantRandomVariable[Constant=" << pauseSpeed << "]";
   
   random_mobility.SetMobilityModel (
     "ns3::RandomWaypointMobilityModel",
     "Speed", 
-    getRandomValue(300.0), 
+    StringValue(speed.str()), 
     "Pause", 
-    getRandomValue(0),
+    StringValue(pause.str()),
     "PositionAllocator",
+    PointerValue(mobilePosAlloc)
   );
   random_mobility.Install (mobileNodes);
+  
+  NS_LOG_UNCOND ("Mobile Mobility (Final Destination) Set!");
   NS_LOG_UNCOND ("Mobile Mobility Type: " << random_mobility.GetMobilityModelType());
+  NS_LOG_UNCOND ("Mobile Mobility Speed/Pause: " << movementSpeed << "/" << pauseSpeed);
 
-  // Enable OLSR
+  //ENABLE OLSR
   OlsrHelper olsr;
   Ipv4StaticRoutingHelper staticRouting;
 
@@ -200,10 +251,9 @@ int main (int argc, char *argv[])
   list.Add (olsr, 10);
 
   InternetStackHelper internet;
-  internet.SetRoutingHelper (list); // has effect on the next Install ()
+  internet.SetRoutingHelper (list); // HAS EFFECT ON THE NEXT Install()
   internet.Install (staticNodes); //UPDATED internet.Install TO ACCOMODATE SEPARATE STATIC NODES
   internet.Install (mobileNodes); //UPDATED internet.Install TO ACCOMODATE SEPARATE MOBILE NODES
-
 
   //PROTOCOL ALREADY SET TO USE TCP/IP
   Ipv4AddressHelper ipv4;
@@ -221,13 +271,13 @@ int main (int argc, char *argv[])
     NS_LOG_UNCOND ("Tracing: Enabling PCAP...");
     wifiPhy.EnablePcap ("wifi-simple-adhoc-grid", devices);
     NS_LOG_UNCOND ("Tracing: Enabled ASCIIAll and PCAP!");
-    // Trace routing tables
+    // TRACE ROUTING TABLES
     Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper> ("wifi-simple-adhoc-grid.routes", std::ios::out);
     olsr.PrintRoutingTableAllEvery (Seconds (2), routingStream);
     Ptr<OutputStreamWrapper> neighborStream = Create<OutputStreamWrapper> ("wifi-simple-adhoc-grid.neighbors", std::ios::out);
     olsr.PrintNeighborCacheAllEvery (Seconds (2), neighborStream);
 
-    // To do-- enable an IP-level trace that shows forwarding events only
+    // TO DO-- ENABLE AN IP-LEVEL TRACE THAT SHOWS FORWARDING EVENTS ONLY
   }
 
   //FOR STATIC NODES
@@ -254,7 +304,7 @@ int main (int argc, char *argv[])
   sourceMobile->Connect (remoteMobile);
   NS_LOG_UNCOND ("Setting Mobile Nodes recv/src Complete!");
 
-  // Give OLSR time to converge-- 30 seconds perhaps
+  // GIVE OLSR TIME TO CONVERGE-- 30 SECONDS PERHAPS
   NS_LOG_UNCOND ("Setting Simulator OLSR Convergence for Static Nodes...");
   Simulator::Schedule (Seconds (15.0), &GenerateTraffic,
                        sourceStatic, packetSize, numPackets, interPacketInterval);
@@ -262,10 +312,15 @@ int main (int argc, char *argv[])
   Simulator::Schedule (Seconds (30.0), &GenerateTraffic,
                        sourceMobile, packetSize, numPackets, interPacketInterval);
 
-  // Output what we are doing
+  // OUTPUT WHAT WE ARE DOING
   NS_LOG_UNCOND ("Testing from node " << sourceNodeStatic << " to " << sinkNodeStatic << " with grid distance " << distance);
   NS_LOG_UNCOND ("Testing from node " << sourceNodeMobile << " to " << sinkNodeMobile << " with grid distance " << distance);
 
+  NS_LOG_UNCOND ("==============================================");
+  NS_LOG_UNCOND ("RUNNING SIMULATOR...");
+  NS_LOG_UNCOND ("==============================================");
+
+  NS_LOG_UNCOND ("Running Simulator (" << sim_time << " seconds)...");
   Simulator::Stop (Seconds (sim_time));
   Simulator::Run ();
   Simulator::Destroy ();
