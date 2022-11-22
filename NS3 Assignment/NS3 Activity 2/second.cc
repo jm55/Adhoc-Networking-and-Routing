@@ -60,6 +60,12 @@ main (int argc, char *argv[])
   NodeContainer p2pNodes;
   p2pNodes.Create (2);
 
+  NodeContainer::Iterator i, end;
+  for(i = p2pNodes.Begin(); i != p2pNodes.End(); i++){
+    Ptr<Node> node = *i;
+    NS_LOG_UNCOND("ID: " << node->GetId());
+  }
+
   NodeContainer csmaNodes;
   csmaNodes.Add (p2pNodes.Get (1));
   csmaNodes.Create (nCsma);
