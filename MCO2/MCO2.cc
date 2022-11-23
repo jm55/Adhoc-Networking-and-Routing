@@ -75,7 +75,7 @@ int main (int argc, char *argv[])
   NS_LOG_UNCOND ("==============================================");
   NS_LOG_UNCOND ("");
   
-  std::string phyMode ("DsssRate11Mbps");
+  std::string phyMode ("DsssRate11Mbps"); //DsssRate11Mbps
   uint32_t deviceCount = 30;
   double distance = 25;  //MODIFIED TO SPEICIFIED TRANSMISSION RANGE OF 25m
   uint32_t packetSize = 512; //MODIFIED TO SPECIFIED PACKET SIZE OF 512Bytes
@@ -127,7 +127,7 @@ int main (int argc, char *argv[])
 
   NS_LOG_UNCOND ("==============================================");
   NS_LOG_UNCOND ("SETUP");
-  NS_LOG_UNCOND ("Source/Sink Range: 0-14 for Static Nodes and 15-29 for Mobile Nodes");
+  NS_LOG_UNCOND ("Source/Sink Range: 0-14 for Static Nodes and 15-29 for Moving Nodes");
   NS_LOG_UNCOND ("SourceNode: " << sourceNode);
   NS_LOG_UNCOND ("SinkNode: " << sinkNode);
   NS_LOG_UNCOND ("Mobile Node Movement Speed: " << movementSpeed);
@@ -322,19 +322,19 @@ int main (int argc, char *argv[])
   TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
   Ptr<Socket> recvSink = Socket::CreateSocket (combinedNodes.Get (sinkNode), tid);
   InetSocketAddress local = InetSocketAddress (Ipv4Address::GetAny (), 80);
-  recvSink ->Bind (local);
+  recvSink ->Bind(local);
   recvSink ->SetRecvCallback (MakeCallback (&ReceivePacket));
   Ptr<Socket> source = Socket::CreateSocket (combinedNodes.Get(sourceNode), tid); //CRASHES HERE
   InetSocketAddress remote = InetSocketAddress (i.GetAddress (sinkNode, 0), 80);
   source->Connect (remote);
   NS_LOG_UNCOND ("Setting Combined Nodes UDP Complete!");  
 
-  // GIVE OLSR TIME TO CONVERGE-- 30 SECONDS PERHAPS
-  NS_LOG_UNCOND ("Setting Simulator OLSR Convergence for Static Nodes...");
+  // OLSR CONVERGENCE
+  NS_LOG_UNCOND ("Setting Simulator OLSR Convergence...");
   Simulator::Schedule (Seconds (convergence), &GenerateTraffic,
                        source, packetSize, numPackets, interPacketInterval);
   
-  // OUTPUT WHAT WE ARE DOING
+  // OUTPUT SOURCE TO TARGET
   NS_LOG_UNCOND ("Testing from node " << sourceNode << " to " << sinkNode << " with grid distance " << distance);
   
   NS_LOG_UNCOND ("==============================================");
@@ -348,4 +348,3 @@ int main (int argc, char *argv[])
 
   return 0;
 }
-
