@@ -47,11 +47,14 @@ static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize, uint32_t pktC
   NS_LOG_UNCOND ("Generating traffic...");
   if (pktCount > 0){
     NS_LOG_UNCOND ("Node " << socket->GetNode()->GetId() << " sending " << pktSize << "bytes");
-    socket->Send (Create<Packet> (pktSize));
+    std::stringstream data;
+    data << "Hello this is Node " << socket->GetNode()->GetId() << " sending you a packet of size " << pktSize << "bytes!" ;
+    Ptr<Packet> packet = Create<Packet>((uint8_t*) data.str().c_str(), pktSize);
+    socket->Send (packet);
     Simulator::Schedule (pktInterval, &GenerateTraffic, socket, pktSize,pktCount - 1, pktInterval);
   }
   else{
-    NS_LOG_UNCOND ("Closing socket (" << socket->GetNode()->GetId() << ")...");
+    NS_LOG_UNCOND ("Closing socket (Node " << socket->GetNode()->GetId() << ")...");
     socket->Close ();
     NS_LOG_UNCOND ("Socket closed!");
   }
@@ -59,6 +62,16 @@ static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize, uint32_t pktC
 
 int main (int argc, char *argv[])
 {
+  NS_LOG_UNCOND ("==============================================");
+  NS_LOG_UNCOND ("NSCOM02 S11");
+  NS_LOG_UNCOND ("MCO2 PROJECT");
+  NS_LOG_UNCOND ("Member: ESCALONA, J.M.");
+  NS_LOG_UNCOND ("The code was based from: ");
+  NS_LOG_UNCOND ("1. examples/wireless/wifi-simple-adhoc-grid.cc");
+  NS_LOG_UNCOND ("2. examples/routing/manet-routing-compare.cc");
+  NS_LOG_UNCOND ("==============================================");
+  NS_LOG_UNCOND ("");
+  
   std::string phyMode ("DsssRate11Mbps");
   uint32_t deviceCount = 30;
   double distance = 25;  //MODIFIED TO SPEICIFIED TRANSMISSION RANGE OF 25m
@@ -70,21 +83,27 @@ int main (int argc, char *argv[])
   uint32_t sinkNode = 29;
   double interval = 1.0; //IN SECONDS
   double sim_time = 300; //SIMULATION TIME (S)
-  double movementSpeed = 1; //IN M/S
+  double movementSpeed = 0.5; //IN M/S
   double pauseSpeed = 0;
   bool verbose = false;
   bool tracing = true;
 
-
-  NS_LOG_UNCOND ("==============================================");
-  NS_LOG_UNCOND ("NSCOM02 S11");
-  NS_LOG_UNCOND ("MCO2 PROJECT");
-  NS_LOG_UNCOND ("Member: ESCALONA, J.M.");
-  NS_LOG_UNCOND ("The code was based from: ");
-  NS_LOG_UNCOND ("1. examples/wireless/wifi-simple-adhoc-grid.cc");
-  NS_LOG_UNCOND ("2. examples/routing/manet-routing-compare.cc");
-  NS_LOG_UNCOND ("==============================================");
-  NS_LOG_UNCOND ("");
+  //SOME OF THE FLAGS WERE TEMPORARILY OMMITED TO REDUCE ISSUES WHEN DEBUGGING
+  CommandLine cmd (__FILE__);
+  //cmd.AddValue ("phyMode", "Wifi Phy mode", phyMode);
+  cmd.AddValue ("distance", "Distance (m)", distance);
+  cmd.AddValue ("packetSize", "Size of application packet sent", packetSize);
+  cmd.AddValue ("numPackets", "Number of packets generated", numPackets);
+  cmd.AddValue ("interval", "Interval (seconds) between packets", interval);
+  cmd.AddValue ("verbose", "Turn on all WifiNetDevice log components", verbose);
+  cmd.AddValue ("tracing", "Turn on ASCII and PCAP tracing", tracing);
+  cmd.AddValue ("numStaticNodes", "Number of Static Nodes", numStaticNodes);
+  cmd.AddValue ("numMobileNodes", "Number of Mobile Nodes", numMobileNodes);
+  cmd.AddValue ("sinkNode", "Receiver node number (0-29)", sinkNode);
+  cmd.AddValue ("sourceNode", "Sender node number (0-29)", sourceNode);
+  cmd.AddValue ("movmentSpeed", "Movement speed of mobile nodes", movementSpeed);
+  cmd.AddValue ("sim_time", "Simulation Time", sim_time);
+  cmd.Parse (argc, argv);
 
   NS_LOG_UNCOND ("=============================================="); 
   NS_LOG_UNCOND ("SPECIFICATION:");
@@ -102,23 +121,19 @@ int main (int argc, char *argv[])
   NS_LOG_UNCOND ("");
 
   NS_LOG_UNCOND ("==============================================");
+  NS_LOG_UNCOND ("SETUP");
+  NS_LOG_UNCOND ("Source/Sink Range: 0-14 for Static Nodes and 15-29 for Mobile Nodes");
+  NS_LOG_UNCOND ("SourceNode: " << sourceNode);
+  NS_LOG_UNCOND ("SinkNode: " << sinkNode);
+  NS_LOG_UNCOND ("Mobile Node Movement Speed: " << movementSpeed);
+  NS_LOG_UNCOND ("Sim_Time: " << sim_time);
+  NS_LOG_UNCOND ("Interval: " << interval);
+  NS_LOG_UNCOND ("==============================================");
+  NS_LOG_UNCOND ("");
+
+  NS_LOG_UNCOND ("==============================================");
   NS_LOG_UNCOND ("BUILDING CONFIGURATIONS...");
   NS_LOG_UNCOND ("==============================================");
-
-  //SOME OF THE FLAGS WERE TEMPORARILY OMMITED TO REDUCE ISSUES WHEN DEBUGGING
-  CommandLine cmd (__FILE__);
-  //cmd.AddValue ("phyMode", "Wifi Phy mode", phyMode);
-  cmd.AddValue ("distance", "Distance (m)", distance);
-  cmd.AddValue ("packetSize", "Size of application packet sent", packetSize);
-  cmd.AddValue ("numPackets", "Number of packets generated", numPackets);
-  cmd.AddValue ("interval", "Interval (seconds) between packets", interval);
-  cmd.AddValue ("verbose", "Turn on all WifiNetDevice log components", verbose);
-  cmd.AddValue ("tracing", "Turn on ASCII and PCAP tracing", tracing);
-  cmd.AddValue ("numStaticNodes", "Number of Static Nodes", numStaticNodes);
-  cmd.AddValue ("numMobileNodes", "Number of Mobile Nodes", numMobileNodes);
-  cmd.AddValue ("sinkNode", "Receiver node number (0-29)", sinkNode);
-  cmd.AddValue ("sourceNode", "Sender node number (0-29)", sourceNode);
-  cmd.Parse (argc, argv);
 
   // CONVERT TO TIME OBJECT
   Time interPacketInterval = Seconds (interval);
@@ -133,9 +148,6 @@ int main (int argc, char *argv[])
   //MOBILE NODES
   NodeContainer mobileNodes;
   mobileNodes.Create(numMobileNodes);
-
-  NS_LOG_UNCOND ("Static Node Count: " << staticNodes.GetN());
-  NS_LOG_UNCOND ("Mobile Node Count: " << mobileNodes.GetN());
 
   // THE BELOW SET OF HELPERS WILL HELP US TO PUT TOGETHER THE WIFI NICS WE WANT
   WifiHelper wifi;
@@ -302,21 +314,18 @@ int main (int argc, char *argv[])
   //TCP
   NS_LOG_UNCOND ("Setting Combined Nodes for UDP Traffic...");
   TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
-  Ptr<Socket> source;
-  for(uint32_t ctr = 0; ctr < deviceCount; ctr++){
-    Ptr<Socket> recvSink = Socket::CreateSocket (combinedNodes.Get (ctr), tid);
-    InetSocketAddress local = InetSocketAddress (Ipv4Address::GetAny (), 80);
-    recvSink ->Bind (local);
-    recvSink ->SetRecvCallback (MakeCallback (&ReceivePacket));
-    source = Socket::CreateSocket (combinedNodes.Get(deviceCount-ctr-1), tid); //CRASHES HERE
-    InetSocketAddress remote = InetSocketAddress (i.GetAddress (sinkNode, 0), 80);
-    source->Connect (remote);
-  }
+  Ptr<Socket> recvSink = Socket::CreateSocket (combinedNodes.Get (sinkNode), tid);
+  InetSocketAddress local = InetSocketAddress (Ipv4Address::GetAny (), 80);
+  recvSink ->Bind (local);
+  recvSink ->SetRecvCallback (MakeCallback (&ReceivePacket));
+  Ptr<Socket> source = Socket::CreateSocket (combinedNodes.Get(sourceNode), tid); //CRASHES HERE
+  InetSocketAddress remote = InetSocketAddress (i.GetAddress (sinkNode, 0), 80);
+  source->Connect (remote);
   NS_LOG_UNCOND ("Setting Combined Nodes UDP Complete!");  
 
   // GIVE OLSR TIME TO CONVERGE-- 30 SECONDS PERHAPS
   NS_LOG_UNCOND ("Setting Simulator OLSR Convergence for Static Nodes...");
-  Simulator::Schedule (Seconds (30.0), &GenerateTraffic,
+  Simulator::Schedule (Seconds (15.0), &GenerateTraffic,
                        source, packetSize, numPackets, interPacketInterval);
   
   // OUTPUT WHAT WE ARE DOING
