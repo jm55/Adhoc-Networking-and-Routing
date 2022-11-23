@@ -35,6 +35,8 @@
 
 using namespace ns3;
 
+uint32_t msgCounter = 1; //FOR COUNTING MESSAGES
+
 NS_LOG_COMPONENT_DEFINE ("WifiSimpleAdhocGrid");
 
 void ReceivePacket (Ptr<Socket> socket){
@@ -44,19 +46,20 @@ void ReceivePacket (Ptr<Socket> socket){
 }
 
 static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize, uint32_t pktCount, Time pktInterval ){
-  NS_LOG_UNCOND ("Generating traffic...");
   if (pktCount > 0){
-    NS_LOG_UNCOND ("Node " << socket->GetNode()->GetId() << " sending " << pktSize << "bytes");
+    NS_LOG_UNCOND ("Node " << socket->GetNode()->GetId() << " sending " << pktSize << "bytes (Message " << msgCounter << ")");
     std::stringstream data;
-    data << "Hello this is Node " << socket->GetNode()->GetId() << " sending you a packet of size " << pktSize << "bytes!" ;
+    data << "Hello this is Node " << socket->GetNode()->GetId() << " sending you a packet of size " << pktSize << "bytes! (Message " << msgCounter << ")";
     Ptr<Packet> packet = Create<Packet>((uint8_t*) data.str().c_str(), pktSize);
     socket->Send (packet);
     Simulator::Schedule (pktInterval, &GenerateTraffic, socket, pktSize,pktCount - 1, pktInterval);
+    msgCounter++;
   }
   else{
     NS_LOG_UNCOND ("Closing socket (Node " << socket->GetNode()->GetId() << ")...");
     socket->Close ();
     NS_LOG_UNCOND ("Socket closed!");
+    msgCounter = 0;
   }
 }
 
@@ -76,17 +79,18 @@ int main (int argc, char *argv[])
   uint32_t deviceCount = 30;
   double distance = 25;  //MODIFIED TO SPEICIFIED TRANSMISSION RANGE OF 25m
   uint32_t packetSize = 512; //MODIFIED TO SPECIFIED PACKET SIZE OF 512Bytes
-  uint32_t numPackets = 1;
+  uint32_t numPackets = 10; //NUMBER OF PACKETS
   uint32_t numStaticNodes = 15;  //MODIFIED TO 15 STATIC NODES (ALBEIT NO INIDCATE WHETHER STATIC AND MOBILE)
   uint32_t numMobileNodes = 15;  //MODIFIED TO 15 MOBILE NODES (ALBEIT NO INIDCATE WHETHER STATIC AND MOBILE)
   uint32_t sourceNode = 0; //BASE 0 THUS RANGE IS 0 TO 29
   uint32_t sinkNode = 29;
   double interval = 1.0; //IN SECONDS
   double sim_time = 300; //SIMULATION TIME (S)
-  double movementSpeed = 0.5; //IN M/S
+  double movementSpeed = 1.0; //IN M/S
   double pauseSpeed = 0;
   bool verbose = false;
   bool tracing = true;
+  double convergence = 30.0; //TIME FOR OLSR TO CONVERGE
 
   //SOME OF THE FLAGS WERE TEMPORARILY OMMITED TO REDUCE ISSUES WHEN DEBUGGING
   CommandLine cmd (__FILE__);
@@ -103,6 +107,7 @@ int main (int argc, char *argv[])
   cmd.AddValue ("sourceNode", "Sender node number (0-29)", sourceNode);
   cmd.AddValue ("movmentSpeed", "Movement speed of mobile nodes", movementSpeed);
   cmd.AddValue ("sim_time", "Simulation Time", sim_time);
+  cmd.AddValue ("convergence", "OLSR Convergence Time", convergence);
   cmd.Parse (argc, argv);
 
   NS_LOG_UNCOND ("=============================================="); 
@@ -128,6 +133,7 @@ int main (int argc, char *argv[])
   NS_LOG_UNCOND ("Mobile Node Movement Speed: " << movementSpeed);
   NS_LOG_UNCOND ("Sim_Time: " << sim_time);
   NS_LOG_UNCOND ("Interval: " << interval);
+  NS_LOG_UNCOND ("Number of Packets to be sent: " << numPackets);
   NS_LOG_UNCOND ("==============================================");
   NS_LOG_UNCOND ("");
 
@@ -325,7 +331,7 @@ int main (int argc, char *argv[])
 
   // GIVE OLSR TIME TO CONVERGE-- 30 SECONDS PERHAPS
   NS_LOG_UNCOND ("Setting Simulator OLSR Convergence for Static Nodes...");
-  Simulator::Schedule (Seconds (15.0), &GenerateTraffic,
+  Simulator::Schedule (Seconds (convergence), &GenerateTraffic,
                        source, packetSize, numPackets, interPacketInterval);
   
   // OUTPUT WHAT WE ARE DOING
