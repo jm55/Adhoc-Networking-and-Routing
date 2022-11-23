@@ -42,6 +42,7 @@ NS_LOG_COMPONENT_DEFINE ("WifiSimpleAdhocGrid");
 void ReceivePacket (Ptr<Socket> socket){
   while (socket->Recv ()){
     NS_LOG_UNCOND ("Node " << socket->GetNode()->GetId() << " received one packet!");
+    NS_LOG_UNCOND ("");
   }
 }
 
@@ -340,8 +341,9 @@ int main (int argc, char *argv[])
   NS_LOG_UNCOND ("==============================================");
   NS_LOG_UNCOND ("RUNNING SIMULATOR...");
   NS_LOG_UNCOND ("==============================================");
-
   NS_LOG_UNCOND ("Running Simulator (" << sim_time << " seconds)...");
+  NS_LOG_UNCOND ("");
+  
   Simulator::Stop (Seconds (sim_time));
   Simulator::Run ();
   Simulator::Destroy ();
