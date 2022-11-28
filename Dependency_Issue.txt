@@ -80,3 +80,5 @@ Run: ./ns3 configure --enable-mpi
 (7) NETMAP EMULATION - NOT SOLVED
 
 ====================================
+
+FINALLY, RUN ./test.py ON THE ROOT DIRECTORY NS3 TO CHECK IF IT WORKS OR NOT
