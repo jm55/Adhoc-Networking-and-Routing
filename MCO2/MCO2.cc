@@ -5,6 +5,7 @@
 //  1. examples/wireless/wifi-simple-adhoc-grid.cc
 //  2. examples/routing/manet-routing-compare.cc
 
+#include <cstdlib>
 #include "ns3/command-line.h"
 #include "ns3/config.h"
 #include "ns3/uinteger.h"
@@ -32,6 +33,7 @@
 #include "ns3/applications-module.h"
 #include "ns3/point-to-point-module.h"
 #include "ns3/packet-sink.h"
+#include "ns3/netanim-module.h" //NEEDED FOR NETANIM
 
 using namespace ns3;
 
@@ -80,18 +82,19 @@ int main (int argc, char *argv[])
   uint32_t deviceCount = 30;
   double distance = 25;  //MODIFIED TO SPEICIFIED TRANSMISSION RANGE OF 25m
   uint32_t packetSize = 512; //MODIFIED TO SPECIFIED PACKET SIZE OF 512Bytes
-  uint32_t numPackets = 10; //NUMBER OF PACKETS
+  uint32_t numPackets = 1; //NUMBER OF PACKETS
   uint32_t numStaticNodes = 15;  //MODIFIED TO 15 STATIC NODES (ALBEIT NO INIDCATE WHETHER STATIC AND MOBILE)
   uint32_t numMobileNodes = 15;  //MODIFIED TO 15 MOBILE NODES (ALBEIT NO INIDCATE WHETHER STATIC AND MOBILE)
   uint32_t sourceNode = 0; //BASE 0 THUS RANGE IS 0 TO 29
   uint32_t sinkNode = 29;
   double interval = 1.0; //IN SECONDS
   double sim_time = 300; //SIMULATION TIME (S)
-  double movementSpeed = 1.0; //IN M/S
+  double movementSpeed = 1.0; //IN M/S?
   double pauseSpeed = 0;
   bool verbose = false;
   bool tracing = true;
-  double convergence = 30.0; //TIME FOR OLSR TO CONVERGE
+  double convergence = 15.0; //TIME FOR OLSR TO CONVERGE
+  std::string title = "MCO2-Escalona_Reinante";
 
   //SOME OF THE FLAGS WERE TEMPORARILY OMMITED TO REDUCE ISSUES WHEN DEBUGGING
   CommandLine cmd (__FILE__);
@@ -115,10 +118,10 @@ int main (int argc, char *argv[])
   NS_LOG_UNCOND ("SPECIFICATION:");
   NS_LOG_UNCOND ("");
   NS_LOG_UNCOND ("Data Flow: Messages");
-  NS_LOG_UNCOND ("Traffic Pattern: TCP");
+  NS_LOG_UNCOND ("Traffic Pattern: UDP");
   NS_LOG_UNCOND ("Simulation Time: " << sim_time << "s");
   NS_LOG_UNCOND ("Transmission Range: " << distance << "m");
-  NS_LOG_UNCOND ("Protocol Stack: TCP/IP");
+  NS_LOG_UNCOND ("Protocol Stack: UDP/IP");
   NS_LOG_UNCOND ("Medium: 802.11");
   NS_LOG_UNCOND ("Packet Size: "  << packetSize << " bytes");
   NS_LOG_UNCOND ("Mobility Model: Static & RandomWay Point");
@@ -204,7 +207,7 @@ int main (int argc, char *argv[])
   static_mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
   static_mobility.Install (staticNodes);
   NS_LOG_UNCOND ("Static Mobility Set!");
-  NS_LOG_UNCOND ("Static Mobility Type: " << static_mobility.GetMobilityModelType());
+  NS_LOG_UNCOND ("Static Mobility Set (" << static_mobility.GetMobilityModelType() << ")");
   
   //MOBILITY FOR MOVING NODES (INITIAL POSITION)
   NS_LOG_UNCOND ("Setting Mobile Mobility (Initial)...");
@@ -212,48 +215,18 @@ int main (int argc, char *argv[])
   random_mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
                                  "MinX", DoubleValue (0.0),
                                  "MinY", DoubleValue (0.0),
-                                 "DeltaX", DoubleValue (distance),
-                                 "DeltaY", DoubleValue (distance),
+                                 "DeltaX", DoubleValue (1),
+                                 "DeltaY", DoubleValue (1),
                                  "GridWidth", UintegerValue (distance), //MODIFIED GRIDWIDTH AS THEIR WILL BE 30 DEVICES INSTEAD OF THE ORIGINAL 25
-                                 "LayoutType", StringValue ("RowFirst"));
-  random_mobility.Install(mobileNodes);
-  NS_LOG_UNCOND ("Mobile Mobility (Initial) Set!");
-
-  //POSITIONALLOCATOR FOR MOBILE FINAL DESTINATION
-  NS_LOG_UNCOND ("Building PositionAllocator...");
-  
-  int64_t streamIndex = 0;
-  ObjectFactory pos;
-  pos.SetTypeId ("ns3::RandomRectanglePositionAllocator");
-  
-  std::stringstream setX;
-  std::stringstream setY;
-  setX << "ns3::UniformRandomVariable[Min=0.0|Max=" << movementSpeed << "]";
-  setY << "ns3::UniformRandomVariable[Min=0.0|Max=" << movementSpeed << "]";
-  pos.Set ("X", StringValue (setX.str()));
-  pos.Set ("Y", StringValue (setY.str()));
-
-  Ptr<PositionAllocator> mobilePosAlloc = pos.Create ()->GetObject<PositionAllocator> ();
-  streamIndex += mobilePosAlloc->AssignStreams (streamIndex);
-  
-  NS_LOG_UNCOND ("PositionAllocator Built!");
-
-  //MOBILITY FOR MOVING NODES (FINAL POSITION)
-  NS_LOG_UNCOND ("Setting Mobile Mobility (Final Destination)...");
-  
-  std::stringstream speed; //MOVEMENT SPEED
-  std::stringstream pause; //PAUSE MOVEMENT SPEED
-  speed << "ns3::UniformRandomVariable[Min=0.0|Max=" << movementSpeed << "]";
-  pause << "ns3::ConstantRandomVariable[Constant=" << pauseSpeed << "]";
-  
+                                 "LayoutType", StringValue ("RowFirst")); //Sets in Row
+  std::stringstream speed;
+  speed << "ns3::ConstantRandomVariable[Constant=" << movementSpeed << "]";
   random_mobility.SetMobilityModel (
-    "ns3::RandomWaypointMobilityModel",
-    "Speed", 
-    StringValue(speed.str()), 
-    "Pause", 
-    StringValue(pause.str()),
-    "PositionAllocator",
-    PointerValue(mobilePosAlloc)
+    "ns3::RandomWalk2dMobilityModel",
+    "Bounds", RectangleValue (Rectangle (0,distance,0,distance)),
+    //"Mode", StringValue ("Time"),
+    //"Time", StringValue (std::to_string(sim_time)+"s"),
+    "Speed", StringValue(speed.str())
   );
   random_mobility.Install (mobileNodes);
   
@@ -295,14 +268,14 @@ int main (int argc, char *argv[])
     NS_LOG_UNCOND ("Tracing: " << tracing);
     AsciiTraceHelper ascii;
     NS_LOG_UNCOND ("Tracing: Enabling ASCIIAll...");
-    wifiPhy.EnableAsciiAll (ascii.CreateFileStream ("MCO2-Escalona_Reinante.tr"));
+    wifiPhy.EnableAsciiAll (ascii.CreateFileStream (title + ".tr"));
     NS_LOG_UNCOND ("Tracing: Enabling PCAP...");
-    wifiPhy.EnablePcap ("MCO2-Escalona_Reinante", devices);
+    wifiPhy.EnablePcap (title, devices);
     NS_LOG_UNCOND ("Tracing: Enabled ASCIIAll and PCAP!");
     // TRACE ROUTING TABLES
-    Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper> ("MCO2-Escalona_Reinante.routes", std::ios::out);
+    Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper> (title + ".routes", std::ios::out);
     olsr.PrintRoutingTableAllEvery (Seconds (1), routingStream);
-    Ptr<OutputStreamWrapper> neighborStream = Create<OutputStreamWrapper> ("MCO2-Escalona_Reinante.neighbors", std::ios::out);
+    Ptr<OutputStreamWrapper> neighborStream = Create<OutputStreamWrapper> (title + ".neighbors", std::ios::out);
     olsr.PrintNeighborCacheAllEvery (Seconds (1), neighborStream);
 
     // TO DO-- ENABLE AN IP-LEVEL TRACE THAT SHOWS FORWARDING EVENTS ONLY
@@ -318,7 +291,7 @@ int main (int argc, char *argv[])
     NS_LOG_UNCOND("Node: " << node->GetId() << " @ " << addr);
   }
 
-  //TCP
+  //UDP
   NS_LOG_UNCOND ("Setting Combined Nodes for UDP Traffic...");
   TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
   Ptr<Socket> recvSink = Socket::CreateSocket (combinedNodes.Get (sinkNode), tid);
@@ -337,14 +310,31 @@ int main (int argc, char *argv[])
   
   // OUTPUT SOURCE TO TARGET
   NS_LOG_UNCOND ("Testing from node " << sourceNode << " to " << sinkNode << " with grid distance " << distance);
-  
+
+  Simulator::Stop (Seconds (sim_time));
+
+  NS_LOG_UNCOND("Setting NetAnim...");
+  AnimationInterface anim(title + ".xml");
+  for(int i = 0;  i < deviceCount; i++){ //DON'T CHANGE DATA TYPE OF i EVEN IF THERE ARE WARNINGS
+    //RANDOMIZATION SAMPLE CODE SOURCE: https://stackoverflow.com/a/7560168
+    int x_pos = std::rand()%(int)(distance);
+    int y_pos = std::rand()%(int)(distance);
+
+    NS_LOG_UNCOND ("Node " << i << " at " << x_pos << "," << y_pos);
+    anim.SetMobilityPollInterval(Seconds(1)); //Move every on second? Source: https://www.nsnam.org/wiki/NetAnim_3.108
+    anim.SetConstantPosition(combinedNodes.Get(i), x_pos, y_pos); //PARAMETERS ARE AS FOLLOWS: ith NODE, X-POS, Y-POS; (BOTH POS IN RANDOM DEFAULT 0-25)
+    anim.EnablePacketMetadata(true);
+    
+  }
+  NS_LOG_UNCOND ("NetAnim Set!");
+  NS_LOG_UNCOND ("");
+
   NS_LOG_UNCOND ("==============================================");
   NS_LOG_UNCOND ("RUNNING SIMULATOR...");
   NS_LOG_UNCOND ("==============================================");
   NS_LOG_UNCOND ("Running Simulator (" << sim_time << " seconds)...");
   NS_LOG_UNCOND ("");
-  
-  Simulator::Stop (Seconds (sim_time));
+
   Simulator::Run ();
   Simulator::Destroy ();
 
