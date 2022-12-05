@@ -32,6 +32,7 @@
 #include "ns3/applications-module.h"
 #include "ns3/point-to-point-module.h"
 #include "ns3/packet-sink.h"
+#include "ns3/netanim-module.h"
 
 using namespace ns3;
 
@@ -295,14 +296,14 @@ int main (int argc, char *argv[])
     NS_LOG_UNCOND ("Tracing: " << tracing);
     AsciiTraceHelper ascii;
     NS_LOG_UNCOND ("Tracing: Enabling ASCIIAll...");
-    wifiPhy.EnableAsciiAll (ascii.CreateFileStream ("MCO2-Escalona_Reinante.tr"));
+    wifiPhy.EnableAsciiAll (ascii.CreateFileStream ("./olsr/MCO2-Escalona_Reinante.tr"));
     NS_LOG_UNCOND ("Tracing: Enabling PCAP...");
-    wifiPhy.EnablePcap ("MCO2-Escalona_Reinante", devices);
+    wifiPhy.EnablePcap ("./olsr/MCO2-Escalona_Reinante", devices);
     NS_LOG_UNCOND ("Tracing: Enabled ASCIIAll and PCAP!");
     // TRACE ROUTING TABLES
-    Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper> ("MCO2-Escalona_Reinante.routes", std::ios::out);
+    Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper> ("./olsr/MCO2-Escalona_Reinante.routes", std::ios::out);
     olsr.PrintRoutingTableAllEvery (Seconds (1), routingStream);
-    Ptr<OutputStreamWrapper> neighborStream = Create<OutputStreamWrapper> ("MCO2-Escalona_Reinante.neighbors", std::ios::out);
+    Ptr<OutputStreamWrapper> neighborStream = Create<OutputStreamWrapper> ("./olsr/MCO2-Escalona_Reinante.neighbors", std::ios::out);
     olsr.PrintNeighborCacheAllEvery (Seconds (1), neighborStream);
 
     // TO DO-- ENABLE AN IP-LEVEL TRACE THAT SHOWS FORWARDING EVENTS ONLY
@@ -343,6 +344,8 @@ int main (int argc, char *argv[])
   NS_LOG_UNCOND ("==============================================");
   NS_LOG_UNCOND ("Running Simulator (" << sim_time << " seconds)...");
   NS_LOG_UNCOND ("");
+  
+  AnimationInterface anim("./olsr/MCO2-Escalona_Reinante.xml");
   
   Simulator::Stop (Seconds (sim_time));
   Simulator::Run ();
