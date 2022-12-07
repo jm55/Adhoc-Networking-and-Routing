@@ -39,7 +39,7 @@ using namespace ns3;
 
 uint32_t msgCounter = 1; //FOR COUNTING MESSAGES
 
-NS_LOG_COMPONENT_DEFINE ("WifiSimpleAdhocGrid");
+NS_LOG_COMPONENT_DEFINE ("NSSECU2 MCO2");
 
 void ReceivePacket (Ptr<Socket> socket){
   while (socket->Recv ()){
@@ -89,7 +89,7 @@ int main (int argc, char *argv[])
   uint32_t sinkNode = 29;
   double interval = 1.0; //IN SECONDS
   double sim_time = 300; //SIMULATION TIME (S)
-  double movementSpeed = 1.0; //IN M/S?
+  double movementSpeed = 10.0; //IN M/S?
   double pauseSpeed = 0;
   bool verbose = false;
   bool tracing = true;
@@ -109,7 +109,7 @@ int main (int argc, char *argv[])
   cmd.AddValue ("numMobileNodes", "Number of Mobile Nodes", numMobileNodes);
   cmd.AddValue ("sinkNode", "Receiver node number (0-29)", sinkNode);
   cmd.AddValue ("sourceNode", "Sender node number (0-29)", sourceNode);
-  cmd.AddValue ("movmentSpeed", "Movement speed of mobile nodes", movementSpeed);
+  cmd.AddValue ("movementSpeed", "Movement speed of mobile nodes", movementSpeed);
   cmd.AddValue ("sim_time", "Simulation Time", sim_time);
   cmd.AddValue ("convergence", "OLSR Convergence Time", convergence);
   cmd.Parse (argc, argv);
@@ -212,20 +212,19 @@ int main (int argc, char *argv[])
   //MOBILITY FOR MOVING NODES (INITIAL POSITION)
   NS_LOG_UNCOND ("Setting Mobile Mobility (Initial)...");
   MobilityHelper random_mobility;
-  random_mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
+  random_mobility.SetPositionAllocator("ns3::GridPositionAllocator",
                                  "MinX", DoubleValue (0.0),
                                  "MinY", DoubleValue (0.0),
                                  "DeltaX", DoubleValue (1),
                                  "DeltaY", DoubleValue (1),
                                  "GridWidth", UintegerValue (distance), //MODIFIED GRIDWIDTH AS THEIR WILL BE 30 DEVICES INSTEAD OF THE ORIGINAL 25
-                                 "LayoutType", StringValue ("RowFirst")); //Sets in Row
+                                 "LayoutType", StringValue ("ColumnFirst")
+                                 ); //Sets in Row
   std::stringstream speed;
   speed << "ns3::ConstantRandomVariable[Constant=" << movementSpeed << "]";
   random_mobility.SetMobilityModel (
     "ns3::RandomWalk2dMobilityModel",
     "Bounds", RectangleValue (Rectangle (0,distance,0,distance)),
-    //"Mode", StringValue ("Time"),
-    //"Time", StringValue (std::to_string(sim_time)+"s"),
     "Speed", StringValue(speed.str())
   );
   random_mobility.Install (mobileNodes);
