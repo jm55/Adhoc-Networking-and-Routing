@@ -82,7 +82,7 @@ int main (int argc, char *argv[])
   uint32_t deviceCount = 30;
   double distance = 25;  //MODIFIED TO SPEICIFIED TRANSMISSION RANGE OF 25m
   uint32_t packetSize = 512; //MODIFIED TO SPECIFIED PACKET SIZE OF 512Bytes
-  uint32_t numPackets = 1; //NUMBER OF PACKETS
+  uint32_t numPackets = 10; //NUMBER OF PACKETS
   uint32_t numStaticNodes = 15;  //MODIFIED TO 15 STATIC NODES (ALBEIT NO INIDCATE WHETHER STATIC AND MOBILE)
   uint32_t numMobileNodes = 15;  //MODIFIED TO 15 MOBILE NODES (ALBEIT NO INIDCATE WHETHER STATIC AND MOBILE)
   uint32_t sourceNode = 0; //BASE 0 THUS RANGE IS 0 TO 29
@@ -94,7 +94,7 @@ int main (int argc, char *argv[])
   bool verbose = false;
   bool tracing = true;
   double convergence = 15.0; //TIME FOR OLSR TO CONVERGE
-  std::string title = "MCO2-Escalona_Reinante";
+  std::string title = "./olsr/MCO2-Escalona_Reinante";
 
   //SOME OF THE FLAGS WERE TEMPORARILY OMMITED TO REDUCE ISSUES WHEN DEBUGGING
   CommandLine cmd (__FILE__);
