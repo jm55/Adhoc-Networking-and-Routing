@@ -29,10 +29,7 @@
 #include "ns3/network-module.h"
 #include "ns3/internet-module.h"
 #include "ns3/mobility-module.h"
-#include "ns3/aodv-module.h"
 #include "ns3/olsr-module.h"
-#include "ns3/dsdv-module.h"
-#include "ns3/dsr-module.h"
 #include "ns3/applications-module.h"
 #include "ns3/point-to-point-module.h"
 #include "ns3/packet-sink.h"
@@ -53,7 +50,7 @@ void ReceivePacket (Ptr<Socket> socket){
 
 static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize, uint32_t pktCount, Time pktInterval ){
   if (pktCount > 0){
-    NS_LOG_UNCOND ("Node " << socket->GetNode()->GetId() << " sending " << pktSize << "bytes (Message " << msgCounter << ")");
+    NS_LOG_UNCOND ("Node " << socket->GetNode()->GetId() << " sending " << pktSize << "bytes...(Message " << msgCounter << ")");
     std::stringstream data;
     data << "Hello this is Node " << socket->GetNode()->GetId() << " sending you a packet of size " << pktSize << "bytes! (Message " << msgCounter << ")";
     Ptr<Packet> packet = Create<Packet>((uint8_t*) data.str().c_str(), pktSize);
@@ -75,7 +72,7 @@ int main (int argc, char *argv[])
   NS_LOG_UNCOND ("NSCOM02 S11");
   NS_LOG_UNCOND ("MCO2 PROJECT");
   NS_LOG_UNCOND ("Member: ESCALONA, J.M. & Reinante I.");
-  NS_LOG_UNCOND ("The code was based from: ");
+  NS_LOG_UNCOND ("\nThe code was based from: ");
   NS_LOG_UNCOND ("1. examples/wireless/wifi-simple-adhoc-grid.cc");
   NS_LOG_UNCOND ("2. examples/routing/manet-routing-compare.cc");
   NS_LOG_UNCOND ("==============================================");
@@ -117,40 +114,44 @@ int main (int argc, char *argv[])
   cmd.AddValue ("sim_time", "Simulation Time", sim_time);
   cmd.AddValue ("convergence", "OLSR Convergence Time", convergence);
   cmd.AddValue ("gain", "RxGain (-120 to 0; Near 0 is Better Signal Range)", gain);
+  cmd.AddValue ("title", "Filename of resulting files (No spaces allowed)", title);
   cmd.Parse (argc, argv);
 
   NS_LOG_UNCOND ("=============================================="); 
-  NS_LOG_UNCOND ("SPECIFICATION:");
-  NS_LOG_UNCOND ("");
+  NS_LOG_UNCOND ("SPECIFICATION:\n");
   NS_LOG_UNCOND ("Data Flow: Messages");
   NS_LOG_UNCOND ("Traffic Pattern: UDP");
   NS_LOG_UNCOND ("Simulation Time: " << sim_time << "s");
-  NS_LOG_UNCOND ("Transmission Range: " << distance << "m");
+  NS_LOG_UNCOND ("Transmission Range: 25m");
   NS_LOG_UNCOND ("Protocol Stack: UDP/IP");
   NS_LOG_UNCOND ("Medium: 802.11");
-  NS_LOG_UNCOND ("Packet Size: "  << packetSize << " bytes");
+  NS_LOG_UNCOND ("Packet Size: 512 bytes");
   NS_LOG_UNCOND ("Mobility Model: Static & RandomWay Point");
-  NS_LOG_UNCOND ("No of Nodes: " << numStaticNodes << " static & " << numMobileNodes << " mobile");
+  NS_LOG_UNCOND ("No of Nodes: " << 15 << " static & " << 15 << " mobile");
   NS_LOG_UNCOND ("==============================================");
   NS_LOG_UNCOND ("");
 
   NS_LOG_UNCOND ("==============================================");
-  NS_LOG_UNCOND ("SETUP");
-  NS_LOG_UNCOND ("Source/Sink Range: 0-14 for Static Nodes and 15-29 for Moving Nodes");
-  NS_LOG_UNCOND ("SourceNode: " << sourceNode);
-  NS_LOG_UNCOND ("SinkNode: " << sinkNode);
+  NS_LOG_UNCOND ("SETUP:\n");
+
+  NS_LOG_UNCOND ("Static Node Count: " << numStaticNodes);
+  NS_LOG_UNCOND ("Mobile Node Count: " << numMobileNodes);
+  NS_LOG_UNCOND ("Sender Node: " << sourceNode);
+  NS_LOG_UNCOND ("Receiver Node: " << sinkNode);
+  NS_LOG_UNCOND ("Distance: " << distance << "m");
   NS_LOG_UNCOND ("Mobile Node Movement Speed: " << movementSpeed);
-  NS_LOG_UNCOND ("Sim_Time: " << sim_time);
-  NS_LOG_UNCOND ("Interval: " << interval);
+  NS_LOG_UNCOND ("Simulation Time: " << sim_time << "s");
+  NS_LOG_UNCOND ("Interval: " << interval << "s");
   NS_LOG_UNCOND ("Number of Packets to be sent: " << numPackets);
+  NS_LOG_UNCOND ("Packet Size: " << packetSize << " bytes");
   NS_LOG_UNCOND ("RxGain: " << gain);
+
   NS_LOG_UNCOND ("==============================================");
   NS_LOG_UNCOND ("");
 
   NS_LOG_UNCOND ("==============================================");
-  NS_LOG_UNCOND ("BUILDING CONFIGURATIONS...");
-  NS_LOG_UNCOND ("==============================================");
-
+  NS_LOG_UNCOND ("BUILDING SIMULATION:\n");
+ 
   // CONVERT TO TIME OBJECT
   Time interPacketInterval = Seconds (interval);
 
@@ -212,22 +213,18 @@ int main (int argc, char *argv[])
                                  "LayoutType", StringValue ("RowFirst"));
   static_mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
   static_mobility.Install (staticNodes);
-  NS_LOG_UNCOND ("Static Mobility Set!");
-  NS_LOG_UNCOND ("Static Mobility Set (" << static_mobility.GetMobilityModelType() << ")");
+  NS_LOG_UNCOND ("Static Mobility Set (" << static_mobility.GetMobilityModelType() << ")!");
   
   //MOBILITY FOR MOVING NODES (INITIAL POSITION)
   NS_LOG_UNCOND ("Setting Mobile Mobility (Initial)...");
   MobilityHelper random_mobility;
-  random_mobility.SetPositionAllocator("ns3::GridPositionAllocator",
-                                 "MinX", DoubleValue (0.0),
-                                 "MinY", DoubleValue (0.0),
-                                 "DeltaX", DoubleValue (1),
-                                 "DeltaY", DoubleValue (1),
-                                 "GridWidth", UintegerValue (distance), //MODIFIED GRIDWIDTH AS THEIR WILL BE 30 DEVICES INSTEAD OF THE ORIGINAL 25
-                                 "LayoutType", StringValue ("ColumnFirst")
-                                 ); //Sets in Row
+  random_mobility.SetPositionAllocator("ns3::RandomRectanglePositionAllocator",
+                                 "X", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=" + std::to_string(distance) + "]"),
+                                 "Y", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=" + std::to_string(distance) + "]")
+                                 );
   std::stringstream speed;
   speed << "ns3::ConstantRandomVariable[Constant=" << movementSpeed << "]";
+  NS_LOG_UNCOND ("Setting Mobile Mobility (Movement)...");
   random_mobility.SetMobilityModel (
     "ns3::RandomWalk2dMobilityModel",
     "Bounds", RectangleValue (Rectangle (0,distance,0,distance)),
@@ -235,12 +232,12 @@ int main (int argc, char *argv[])
   );
   random_mobility.Install (mobileNodes);
   
-  NS_LOG_UNCOND ("Mobile Mobility (Final Destination) Set!");
+  NS_LOG_UNCOND ("Mobile Mobility Set!");
   NS_LOG_UNCOND ("Mobile Mobility Type: " << random_mobility.GetMobilityModelType());
   NS_LOG_UNCOND ("Mobile Mobility Speed/Pause: " << movementSpeed << "/" << pauseSpeed);
 
   //COMBINE NODES
-  NS_LOG_UNCOND ("Combining nodes...");
+  NS_LOG_UNCOND ("Combining Nodes (Static+Mobile)...");
   NodeContainer combinedNodes;
   combinedNodes.Add(staticNodes);
   combinedNodes.Add(mobileNodes);
@@ -253,7 +250,7 @@ int main (int argc, char *argv[])
   Ipv4ListRoutingHelper list;
   list.Add (staticRouting, 0);
   list.Add (olsr, deviceCount);
-  NS_LOG_UNCOND ("OSLR set!");
+  NS_LOG_UNCOND ("OSLR Set!");
 
   NS_LOG_UNCOND ("Setting Internet...");
   InternetStackHelper internet;
@@ -263,13 +260,13 @@ int main (int argc, char *argv[])
 
   //PROTOCOL ALREADY SET TO USE TCP/IP
   Ipv4AddressHelper ipv4;
-  NS_LOG_INFO ("Assign IP Addresses.");
+  NS_LOG_UNCOND ("Assigning IP Addresses...");
   ipv4.SetBase ("10.1.1.0", "255.255.255.0");
   Ipv4InterfaceContainer i = ipv4.Assign (devices);
 
   //TRACING
-  if (tracing == true)
-  {
+  if (tracing == true){
+    NS_LOG_UNCOND("Tracing Enabled!");
     NS_LOG_UNCOND ("Tracing: " << tracing);
     AsciiTraceHelper ascii;
     NS_LOG_UNCOND ("Tracing: Enabling ASCIIAll...");
@@ -284,6 +281,8 @@ int main (int argc, char *argv[])
     olsr.PrintNeighborCacheAllEvery (Seconds (1), neighborStream);
 
     // TO DO-- ENABLE AN IP-LEVEL TRACE THAT SHOWS FORWARDING EVENTS ONLY
+  }else{
+    NS_LOG_UNCOND("Tracing Disabled!");
   }
 
   //SHOW ADDRESSES
@@ -325,23 +324,27 @@ int main (int argc, char *argv[])
     int x_pos = std::rand()%(int)(distance);
     int y_pos = std::rand()%(int)(distance);
 
-    NS_LOG_UNCOND ("Node " << i << " at " << x_pos << "," << y_pos);
-    anim.SetMobilityPollInterval(Seconds(1)); //Move every on second? Source: https://www.nsnam.org/wiki/NetAnim_3.108
+    //NS_LOG_UNCOND ("Node " << i << " at " << x_pos << "," << y_pos);
+    anim.SetMobilityPollInterval(Seconds(interval)); //Move every on second? Source: https://www.nsnam.org/wiki/NetAnim_3.108
     anim.SetConstantPosition(combinedNodes.Get(i), x_pos, y_pos); //PARAMETERS ARE AS FOLLOWS: ith NODE, X-POS, Y-POS; (BOTH POS IN RANDOM DEFAULT 0-25)
     anim.EnablePacketMetadata(true);
     
   }
   NS_LOG_UNCOND ("NetAnim Set!");
+  NS_LOG_UNCOND ("==============================================");
   NS_LOG_UNCOND ("");
 
   NS_LOG_UNCOND ("==============================================");
-  NS_LOG_UNCOND ("RUNNING SIMULATOR...");
-  NS_LOG_UNCOND ("==============================================");
-  NS_LOG_UNCOND ("Running Simulator (" << sim_time << " seconds)...");
+  NS_LOG_UNCOND ("RUNNING SIMULATOR (" << sim_time << "s):");
   NS_LOG_UNCOND ("");
 
   Simulator::Run ();
   Simulator::Destroy ();
+
+  NS_LOG_UNCOND ("==============================================");
+
+  NS_LOG_UNCOND ("");
+  NS_LOG_UNCOND ("SIMULATION COMPLETED!");
 
   return 0;
 }
