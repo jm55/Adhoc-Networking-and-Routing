@@ -258,7 +258,7 @@ int main (int argc, char *argv[])
   internet.Install (combinedNodes); //UPDATED internet.Install
   NS_LOG_UNCOND ("Internet set!");
 
-  //PROTOCOL ALREADY SET TO USE TCP/IP
+  //PROTOCOL ALREADY SET TO USE UDP/IP
   Ipv4AddressHelper ipv4;
   NS_LOG_UNCOND ("Assigning IP Addresses...");
   ipv4.SetBase ("10.1.1.0", "255.255.255.0");
@@ -302,7 +302,7 @@ int main (int argc, char *argv[])
   InetSocketAddress local = InetSocketAddress (Ipv4Address::GetAny (), 80);
   recvSink ->Bind(local);
   recvSink ->SetRecvCallback (MakeCallback (&ReceivePacket));
-  Ptr<Socket> source = Socket::CreateSocket (combinedNodes.Get(sourceNode), tid); //CRASHES HERE
+  Ptr<Socket> source = Socket::CreateSocket (combinedNodes.Get(sourceNode), tid);
   InetSocketAddress remote = InetSocketAddress (i.GetAddress (sinkNode, 0), 80);
   source->Connect (remote);
   NS_LOG_UNCOND ("Setting Combined Nodes UDP Complete!");  
