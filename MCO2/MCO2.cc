@@ -1,6 +1,9 @@
 //NSCOM02 MCO2
 //MEMBER: ESCALONA, JOSE MIGUEL & REINANTE, CHRISTIAN VICTOR
 
+//PRE-REQUISITES
+//KINDLY CREATE A FOLDER NAMED olsr ON THE ns-3.x.x DIRECTORY BEFORE RUNNING THE SIMULATION
+
 //THIS WAS BASED FROM NS3's:
 //  1. examples/wireless/wifi-simple-adhoc-grid.cc
 //  2. examples/routing/manet-routing-compare.cc
@@ -93,7 +96,8 @@ int main (int argc, char *argv[])
   double pauseSpeed = 0;
   bool verbose = false;
   bool tracing = true;
-  double convergence = 15.0; //TIME FOR OLSR TO CONVERGE
+  double convergence = 10.0; //TIME FOR OLSR TO CONVERGE
+  double gain = -10.0;
   std::string title = "./olsr/MCO2-Escalona_Reinante";
 
   //SOME OF THE FLAGS WERE TEMPORARILY OMMITED TO REDUCE ISSUES WHEN DEBUGGING
@@ -107,11 +111,12 @@ int main (int argc, char *argv[])
   cmd.AddValue ("tracing", "Turn on ASCII and PCAP tracing", tracing);
   cmd.AddValue ("numStaticNodes", "Number of Static Nodes", numStaticNodes);
   cmd.AddValue ("numMobileNodes", "Number of Mobile Nodes", numMobileNodes);
-  cmd.AddValue ("sinkNode", "Receiver node number (0-29)", sinkNode);
-  cmd.AddValue ("sourceNode", "Sender node number (0-29)", sourceNode);
+  cmd.AddValue ("sinkNode", "Receiver node number (0-14 Static, 15-29 Mobile)", sinkNode);
+  cmd.AddValue ("sourceNode", "Sender node number (0-14 Static, 15-29 Mobile)", sourceNode);
   cmd.AddValue ("movementSpeed", "Movement speed of mobile nodes", movementSpeed);
   cmd.AddValue ("sim_time", "Simulation Time", sim_time);
   cmd.AddValue ("convergence", "OLSR Convergence Time", convergence);
+  cmd.AddValue ("gain", "RxGain (-120 to 0; Near 0 is Better Signal Range)", gain);
   cmd.Parse (argc, argv);
 
   NS_LOG_UNCOND ("=============================================="); 
@@ -138,6 +143,7 @@ int main (int argc, char *argv[])
   NS_LOG_UNCOND ("Sim_Time: " << sim_time);
   NS_LOG_UNCOND ("Interval: " << interval);
   NS_LOG_UNCOND ("Number of Packets to be sent: " << numPackets);
+  NS_LOG_UNCOND ("RxGain: " << gain);
   NS_LOG_UNCOND ("==============================================");
   NS_LOG_UNCOND ("");
 
@@ -170,7 +176,7 @@ int main (int argc, char *argv[])
 
   YansWifiPhyHelper wifiPhy;
   // SET IT TO ZERO; OTHERWISE, GAIN WILL BE ADDED
-  wifiPhy.Set ("RxGain", DoubleValue (-10) );
+  wifiPhy.Set ("RxGain", DoubleValue (gain) );
   // NS-3 SUPPORTS RADIOTAP AND PRISM TRACING EXTENSIONS FOR 802.11B
   wifiPhy.SetPcapDataLinkType (WifiPhyHelper::DLT_IEEE802_11_RADIO);
 
