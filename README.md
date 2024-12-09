@@ -2,4 +2,4 @@
 
 ## Description
 
-Project mainly involves implementing an ad-hoc network protocol (OSI L3 - Network Layer) using NS3 in C++. 
+Projects mainly involves implementing ad-hoc network protocols (`Network Layer`) using NS3 in C++. 
