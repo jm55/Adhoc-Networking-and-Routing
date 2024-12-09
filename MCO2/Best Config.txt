@@ -1,0 +1,7 @@
+./ns3 run "scratch/MCO2.cc --gain=-30 --sim_time=60 --numPackets=50 --movementSpeed=20" #EVENTUAL DISCONNECTION
+
+./ns3 run "scratch/MCO2.cc" #DEFAULTS
+
+./ns3 run "scratch/MCO2.cc --sim_time=60" #SHORTENED SIMULATION
+
+./ns3 run "scratch/MCO2.cc --sourceNode=15 --sourceNode=29 --gain=-30 --numPackets=40 --sim_time=60 --movementSpeed=20" #BOTH SEND & RECEIVE NODES ARE MOVING
